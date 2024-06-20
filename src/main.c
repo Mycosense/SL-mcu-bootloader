@@ -78,10 +78,6 @@
 
 #define BOOTLOADER_TIMEOUT 100000 // approx 5s
 #define BLD_METABLOCK_SIZE 0x100
-static const uint8_t BLD_METABLOCK_MAGIC[] = {0x01, 0x05};
-
-static bool verify_application_code(void);
-static bool is_metablock(void);
 
 static volatile bool main_b_cdc_enable = false;
 extern int8_t led_tick_step;
@@ -132,19 +128,7 @@ static void check_start_application(void) {
     RGBLED_set_color(COLOR_LEAVE);
 
     uint32_t app_start_address;
-    if(is_metablock())
-    {
-        if(!verify_application_code())
-        {
-            return;  // invalid meta data, stay in bootloader
-        }
-        app_start_address = APP_START_ADDRESS + BLD_METABLOCK_SIZE;
-    }
-    else
-    {
-        // Legacy firmware w/o metablock
-        app_start_address = APP_START_ADDRESS;
-    }
+    app_start_address = APP_START_ADDRESS + BLD_METABLOCK_SIZE;
 
     uint32_t app_reset_handler_address = *(uint32_t *)(app_start_address + 4);
     uint32_t main_stack_pointer_address = *(uint32_t *)app_start_address;
@@ -287,25 +271,4 @@ int main(void) {
     }
     // after timeout, we restart
     NVIC_SystemReset();
-}
-
-// True: success (application code valid)
-static bool verify_application_code(void)
-{
-    uint16_t crc = *(uint16_t*)(APP_START_ADDRESS + 2);
-    uint32_t firmware_size = *(uint32_t*)(APP_START_ADDRESS + 4);
-    uint16_t crc_calculated = crc16_calc((uint8_t*)(APP_START_ADDRESS + BLD_METABLOCK_SIZE), firmware_size, 0);
-    if(crc == crc_calculated)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-static bool is_metablock(void)
-{
-    return memcmp(BLD_METABLOCK_MAGIC, (uint8_t*)APP_START_ADDRESS, sizeof(BLD_METABLOCK_MAGIC)) == 0;
 }
