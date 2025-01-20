@@ -10,9 +10,6 @@
 
 #define BOARD_ID "dlp2"
 
-#define USB_VID 0x2886
-#define USB_PID 0x002F
-
 #define LED_PIN PIN_PA17
 #define LED_PIN_PULLUP 1
 #define LED_TX_PIN PIN_PA19
