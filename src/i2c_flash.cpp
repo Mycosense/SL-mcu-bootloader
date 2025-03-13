@@ -1,19 +1,31 @@
+// inspired by Arduino's TwoWire (Wire.h)
+
 #include "i2c_flash.h"
+#include <Arduino.h>
+#include <wiring_private.h>
+#include "Wire.h"
 
 #define RX_CMD_BUFFER_LEN 2
 
 
-// volatile static uint8_t rx_cmd_buffer[2];
-// volatile static uint8_t rx_cmd_buffer_index = 0;
+I2CFlash::I2CFlash(SERCOM *s, uint8_t pinSDA, uint8_t pinSCL) : sercom(s), _uc_pinSDA(pinSDA), _uc_pinSCL(pinSCL) {}
 
-// volatile uint8_t rx_buffer[RX_BUFFER_LEN];
-// volatile uint16_t rx_buffer_index = 0;
-// volatile bool require_erase;
-// volatile bool require_flash_write;
-// volatile size_t flash_pointer = FLASH_START_ADDR;
+void I2CFlash::begin(uint8_t address, bool enableGeneralCall) {
+  //Slave mode
+  sercom->initSlaveWIRE(address, enableGeneralCall);
+  set_mutli_slave_addr(address);
+  sercom->enableWIRE();
 
+  pinPeripheral(_uc_pinSDA, g_APinDescription[_uc_pinSDA].ulPinType);
+  pinPeripheral(_uc_pinSCL, g_APinDescription[_uc_pinSCL].ulPinType);
+}
 
-I2CFlash::I2CFlash(SERCOM *s) : sercom(s) {}
+void I2CFlash::set_mutli_slave_addr(uint8_t ucAddress)
+{
+    // TODO: this should not be hardcoded!
+        SERCOM0->I2CS.ADDR.reg = SERCOM_I2CS_ADDR_ADDR( ucAddress & 0x7Ful ) | // 0x7F, select only 7 bits
+                          SERCOM_I2CS_ADDR_ADDRMASK( 0x03ul );          // 0x00, only match exact address
+}
 
 
 bool I2CFlash::is_ready(void)
@@ -48,7 +60,7 @@ bool I2CFlash::receive_byte(uint8_t byte)
             size_t addr = rx_cmd_buffer[0] << 8 | rx_cmd_buffer[1];
             if(addr < FLASH_SIZE && addr % 4 == 0) // We only accept 4 byte aligned addresses 
             {
-                flash_pointer = addr + FLASH_START_ADDR;
+                flash_pointer = addr + (selected_device * FLASH_DEVICE_SIZE) + FLASH_START_ADDR;
                 rx_buffer_index = 0;
             }
             else
@@ -100,6 +112,7 @@ void I2CFlash::i2c_flash_it_handler(void)
     }
     else if(sercom->isAddressMatch())  //Address Match
     {
+        selected_device = (uint8_t)((sercom->readDataWIRE() >> 1) & 0x03);
         if(is_ready())
         {
             sercom->prepareAckBitWIRE();

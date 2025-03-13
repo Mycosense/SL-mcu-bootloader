@@ -6,7 +6,7 @@
 #define I2C_SLAVE_ADDRESS 0x30
 #define BLINK_HALF_PERIOD_MS 500
 
-static I2CFlash g_i2c_flash(&PERIPH_WIRE);
+static I2CFlash g_i2c_flash(&PERIPH_WIRE, PIN_WIRE_SDA, PIN_WIRE_SCL);
 
 void SERCOM0_Handler()
 {
@@ -15,7 +15,7 @@ void SERCOM0_Handler()
 
 void setup() {
   pinMode(PIN_LED, OUTPUT);
-  Wire.begin(I2C_SLAVE_ADDRESS);
+  g_i2c_flash.begin(I2C_SLAVE_ADDRESS);
 }
 
 static void led_toggle()
