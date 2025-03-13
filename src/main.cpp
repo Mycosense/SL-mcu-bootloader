@@ -1,75 +1,56 @@
 #include <Wire.h>
 #include <Arduino.h>
+#include <flash.h>
+#include <i2c_flash.h>
 
-#define I2C_SLAVE_ADDRESS 0x50
-#define PAGE_SIZE 64
-#define FLASH_START_ADDR 0x2100
+#define I2C_SLAVE_ADDRESS 0x30
+#define BLINK_HALF_PERIOD_MS 500
 
-volatile uint8_t rx_buffer[PAGE_SIZE];
-volatile uint32_t rx_index = 0;
-volatile uint32_t flash_addr = FLASH_START_ADDR;
+static I2CFlash g_i2c_flash(&PERIPH_WIRE);
 
-void receiveData(int byteCount);
-void requestData();
-void eraseFlash(uint32_t address);
-void writeFlash(uint32_t address, uint8_t *data, uint32_t length);
+void SERCOM0_Handler()
+{
+  g_i2c_flash.i2c_flash_it_handler();
+}
 
 void setup() {
   pinMode(PIN_LED, OUTPUT);
-  // Initialize I2C slave
   Wire.begin(I2C_SLAVE_ADDRESS);
-  Wire.onReceive(receiveData);
-  Wire.onRequest(requestData);
+}
+
+static void led_toggle()
+{
+  static bool led_state;
+  led_state = !led_state;
+  digitalWrite(PIN_LED, led_state);
+
+}
+
+static void blink_loop(){
+  static uint32_t last_toggle_time;
+  
+  if(millis() - last_toggle_time > BLINK_HALF_PERIOD_MS)
+  {
+    led_toggle();
+    last_toggle_time = millis();
+  }
 }
 
 void loop() {
-  // Nothing to do in loop, data is handled in interrupt (Wire.onReceive)
-  digitalWrite(PIN_LED, 0);
-  delay(500);
-  digitalWrite(PIN_LED, 1);
-  delay(500);
-}
-
-void receiveData(int byteCount) {
-  static uint32_t write_offset = 0;
-  
-  if (byteCount == 2) {  
-    // Handle EEPROM-style address setting (high byte + low byte)
-    uint8_t high = Wire.read();
-    uint8_t low = Wire.read();
-    write_offset = (high << 8) | low;  // Set write position
-  } else {
-    // Receive firmware data (EEPROM-style writes)
-    while (Wire.available()) {
-      uint8_t data = Wire.read();
-      rx_buffer[rx_index++] = data;
-
-      if (rx_index >= PAGE_SIZE) {
-        writeFlash(FLASH_START_ADDR + write_offset, (uint8_t*)rx_buffer, PAGE_SIZE);
-        write_offset += PAGE_SIZE;
-        rx_index = 0;
-      }
-    }
+  if(g_i2c_flash.require_erase)
+  {
+    flash_erase_to_end((uint32_t*)FLASH_START_ADDR);
+    g_i2c_flash.require_erase = false;
   }
-}
-
-void requestData() {
-  // Handle any data requests from the I2C master (optional)
-  // In this case, no need to send anything back.
-}
-
-void eraseFlash(uint32_t address) {
-  // Wait for NVMCTRL to be ready and erase a page
-  NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_ER;
-  while (!NVMCTRL->INTFLAG.bit.READY);
-}
-
-void writeFlash(uint32_t address, uint8_t *data, uint32_t length) {
-  eraseFlash(address);
-  for (uint32_t i = 0; i < length; i += 4) {
-    uint32_t word = data[i] | (data[i + 1] << 8) | (data[i + 2] << 16) | (data[i + 3] << 24);
-    *((volatile uint32_t*) address) = word;
-    address += 4;
-    while (!NVMCTRL->INTFLAG.bit.READY);
+  if(g_i2c_flash.require_flash_write)
+  {
+    uint32_t* dst = (uint32_t*)g_i2c_flash.flash_pointer;
+    uint32_t* src = (uint32_t*)g_i2c_flash.rx_buffer;
+    uint32_t n_words = g_i2c_flash.rx_buffer_index / 4;
+    flash_write_words(dst, src, n_words);
+    g_i2c_flash.flash_pointer += g_i2c_flash.rx_buffer_index;
+    g_i2c_flash.require_flash_write = false;
+    led_toggle(); // blink during flash
   }
+  blink_loop();
 }
