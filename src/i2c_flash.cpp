@@ -35,16 +35,14 @@ void I2CFlash::write_stop(void)
     {
         require_erase = true;
     }
-    else if(is_flash_write() && rx_buffer_index > ADDR_LEN) // addr received, >= 1 data bytes received
+    else if(is_flash_mem())
     {
-        // pad buffer
-        while(rx_buffer_index % 4 != 0 && rx_buffer_index < RX_BUFFER_LEN)
+        size_t addr = rx_buffer[0] << 24 | rx_buffer[1] << 16 | rx_buffer[2] << 8 | rx_buffer[3];
+        if(addr+FLASH_START_ADDR < FLASH_SIZE)
         {
-            rx_buffer[rx_buffer_index++] = 0xff;
-        }
-        if(flash_pointer >= FLASH_START_ADDR && flash_pointer + rx_buffer_index - ADDR_LEN <= FLASH_START_ADDR + FLASH_SIZE)
-        {
-            flash_write_len = rx_buffer_index - ADDR_LEN ; // start writing of flash in user space
+            mem_pointer = (uint8_t*)(FLASH_START_ADDR + addr);
+            mem_end = (uint8_t*)FLASH_SIZE;
+            flash_write_len = rx_buffer_index - ADDR_LEN;
         }
     }
 }
@@ -56,39 +54,32 @@ bool I2CFlash::receive_byte(uint8_t byte)
         return false;
     }
     
-    rx_buffer[rx_buffer_index++] = sercom->readDataWIRE();
-    if(rx_buffer_index == ADDR_LEN && is_flash_write())
+    if(rx_buffer_index == ADDR_LEN && is_flash_mem())
     {
-        // last addr byte received => store address if allowed
+        // finished receiving address, receiving first byte. Pad rx_buffer for 4 byte alignment
         size_t addr = rx_buffer[0] << 24 | rx_buffer[1] << 16 | rx_buffer[2] << 8 | rx_buffer[3];
-        if(addr < FLASH_SIZE)
+        for(uint8_t i=0; i < addr % 4; i++) // pad buffer to align by 4 bytes
         {
-            flash_pointer = addr + FLASH_START_ADDR;
-            for(uint8_t i=0; i < flash_pointer % 4; i++) // pad buffer to align by 4 bytes
-            {
-                rx_buffer[rx_buffer_index++] = 0xff;
-            }
-        }
-        else
-        {
-            return false;
+            rx_buffer[rx_buffer_index++] = 0xff;
         }
     }
+    rx_buffer[rx_buffer_index++] = sercom->readDataWIRE();
+    
     return true;
 }
 
 void I2CFlash::send_byte(void)
 {
     uint8_t c = 0xff;
-    if(flash_pointer < FLASH_START_ADDR + FLASH_SIZE)
+    if(mem_pointer < mem_end)
     {
-        c = *(uint8_t*)flash_pointer;
-        flash_pointer++;
+        c = *(uint8_t*)mem_pointer;
+        mem_pointer++;
     }
     sercom->sendDataSlaveWIRE(c);
 }
 
-bool I2CFlash::is_flash_write(void)
+bool I2CFlash::is_flash_mem(void)
 {
     // first addr bit == 0 => write to flash;
     return rx_buffer_index >= ADDR_LEN && (rx_buffer[0] & 0x80) == 0;
@@ -104,7 +95,7 @@ void I2CFlash::i2c_flash_it_handler(void)
         sercom->prepareCommandBitsWire(0x03);
         if(sercom->isMasterReadOperationWIRE())
         {
-            flash_pointer--; // for n bytes read, send_byte() is called n+1 times, so we set flash_pointer back
+            mem_pointer--; // for n bytes read, send_byte() is called n+1 times, so we set flash_pointer back
         }
         else
         {
@@ -146,11 +137,17 @@ void I2CFlash::i2c_flash_it_handler(void)
 
 void I2CFlash::write_flash(void)
 {
-    uint32_t* dst = (uint32_t*)(flash_pointer & 0xfffffffc); // align 4 bytes
+    uint32_t* dst = (uint32_t*)((uint32_t)mem_pointer & 0xfffffffc); // align 4 bytes
     uint32_t* src = (uint32_t*)(rx_buffer + ADDR_LEN);
+    // apply padding to align with 4 bytes
+    while (flash_write_len % 4 != 0 && flash_write_len < RX_BUFFER_LEN)
+    {
+        rx_buffer[ADDR_LEN+flash_write_len++] = 0xff;
+    }
+    
     uint32_t n_words = flash_write_len / 4;
     flash_write_words(dst, src, n_words);
-    flash_pointer += flash_write_len;
+    mem_pointer += flash_write_len;
     flash_write_len = 0;
 }
 
