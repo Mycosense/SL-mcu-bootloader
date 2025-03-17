@@ -44,7 +44,7 @@ void loop() {
   }
   if(g_i2c_flash.require_flash_write)
   {
-    uint32_t* dst = (uint32_t*)g_i2c_flash.flash_pointer;
+    uint32_t* dst = (uint32_t*)(g_i2c_flash.flash_pointer & 0xfffffffc); // align 4 bytes
     uint32_t* src = (uint32_t*)g_i2c_flash.rx_buffer;
     uint32_t n_words = g_i2c_flash.rx_buffer_index / 4;
     flash_write_words(dst, src, n_words);

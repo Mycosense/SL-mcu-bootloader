@@ -46,6 +46,11 @@ void I2CFlash::write_stop(void)
     }
     else if(rx_buffer_index > 0) // addr received, >= 1 data bytes received
     {
+        // pad buffer
+        while(rx_buffer_index % 4 != 0 && rx_buffer_index < RX_BUFFER_LEN)
+        {
+            rx_buffer[rx_buffer_index++] = 0xff;
+        }
         require_flash_write = true;
     }
 }
@@ -58,10 +63,14 @@ bool I2CFlash::receive_byte(uint8_t byte)
         {
             // store address if allowed
             size_t addr = rx_cmd_buffer[0] << 8 | rx_cmd_buffer[1];
-            if(addr < FLASH_SIZE && addr % 4 == 0) // We only accept 4 byte aligned addresses 
+            if(addr < FLASH_SIZE)
             {
                 flash_pointer = addr + (selected_device * FLASH_DEVICE_SIZE) + FLASH_START_ADDR;
                 rx_buffer_index = 0;
+                for(uint8_t i=0; i < flash_pointer % 4; i++) // pad buffer to align by 4 bytes
+                {
+                    rx_buffer[rx_buffer_index++] = 0xff;
+                }
             }
             else
             {

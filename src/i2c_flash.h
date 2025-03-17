@@ -8,8 +8,8 @@
 #include "SERCOM.h"
 #include "flash.h"
 
-
-#define RX_BUFFER_LEN FLASH_ROW_SIZE
+#define RX_BUFFER_PADDING_LEN 4
+#define RX_BUFFER_LEN (FLASH_ROW_SIZE + RX_BUFFER_PADDING_LEN)
 #define FLASH_START_ADDR 0x2000U
 
 class I2CFlash
