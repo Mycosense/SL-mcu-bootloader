@@ -42,14 +42,9 @@ void loop() {
     flash_erase_to_end((uint32_t*)FLASH_START_ADDR);
     g_i2c_flash.require_erase = false;
   }
-  if(g_i2c_flash.require_flash_write)
+  if(g_i2c_flash.flash_write_len)
   {
-    uint32_t* dst = (uint32_t*)(g_i2c_flash.flash_pointer & 0xfffffffc); // align 4 bytes
-    uint32_t* src = (uint32_t*)g_i2c_flash.rx_buffer;
-    uint32_t n_words = g_i2c_flash.rx_buffer_index / 4;
-    flash_write_words(dst, src, n_words);
-    g_i2c_flash.flash_pointer += g_i2c_flash.rx_buffer_index;
-    g_i2c_flash.require_flash_write = false;
+    g_i2c_flash.write_flash();
     led_toggle(); // blink during flash
   }
   blink_loop();
