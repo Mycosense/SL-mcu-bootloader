@@ -21,6 +21,7 @@ class I2CFlash
     void begin(uint8_t address, bool enableGeneralCall = false);
     void i2c_flash_it_handler(void);
     void write_flash(void);
+    void prepare_crc(void);
     
     volatile uint16_t flash_write_len;
     volatile bool require_erase;
@@ -40,7 +41,7 @@ class I2CFlash
     SERCOM* sercom;
     uint8_t _uc_pinSDA;
     uint8_t _uc_pinSCL;
-    
+
     volatile uint16_t rx_buffer_index;
     alignas(4) volatile uint8_t rx_buffer[RX_BUFFER_LEN];
     alignas(4) volatile uint8_t tx_buffer[TX_BUFFER_LEN];

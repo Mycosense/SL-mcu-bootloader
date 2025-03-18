@@ -4,8 +4,10 @@
 #include <Arduino.h>
 #include <wiring_private.h>
 #include "Wire.h"
+#include "crc16.h"
 
 #define ERASE_COMMAND 0xc7
+#define CRC_COMMAND 0xca
 
 
 I2CFlash::I2CFlash(SERCOM *s, uint8_t pinSDA, uint8_t pinSCL) : sercom(s), _uc_pinSDA(pinSDA), _uc_pinSCL(pinSCL) {}
@@ -34,6 +36,10 @@ void I2CFlash::write_stop(void)
     else if(rx_buffer[0] == ERASE_COMMAND) // erase command
     {
         require_erase = true;
+    }
+    else if(rx_buffer[0] == CRC_COMMAND) // erase command
+    {
+        require_crc = true;
     }
     else if(is_flash_mem())
     {
@@ -149,5 +155,24 @@ void I2CFlash::write_flash(void)
     flash_write_words(dst, src, n_words);
     mem_pointer += flash_write_len;
     flash_write_len = 0;
+}
+
+void I2CFlash::prepare_crc(void)
+{
+    size_t start_addr = rx_buffer[1] << 24 | rx_buffer[2] << 16 | rx_buffer[3] << 8 | rx_buffer[4] + FLASH_START_ADDR;
+    size_t size = rx_buffer[5] << 24 | rx_buffer[6] << 16 | rx_buffer[7] << 8 | rx_buffer[8];
+    mem_pointer = tx_buffer;
+    if(start_addr + size < FLASH_SIZE)
+    {
+        uint16_t crc = crc16_ccitt((uint8_t*)start_addr, size);
+        tx_buffer[0] = (uint8_t) (crc >> 8);
+        tx_buffer[1] = (uint8_t) (crc & 0x00ff);
+        mem_end = tx_buffer+2;
+    }
+    else
+    {
+        mem_end = 0;
+    }
+    require_crc = false;
 }
 

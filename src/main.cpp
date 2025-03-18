@@ -47,5 +47,9 @@ void loop() {
     g_i2c_flash.write_flash();
     led_toggle(); // blink during flash
   }
+  if(g_i2c_flash.require_crc)
+  {
+    g_i2c_flash.prepare_crc();
+  }
   blink_loop();
 }
