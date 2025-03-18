@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <wiring_private.h>
 #include "Wire.h"
-#include "crc16.h"
+#include "crc.h"
 
 #define ERASE_COMMAND 0xc7
 #define CRC_COMMAND 0xca
@@ -159,15 +159,18 @@ void I2CFlash::write_flash(void)
 
 void I2CFlash::prepare_crc(void)
 {
-    size_t start_addr = rx_buffer[1] << 24 | rx_buffer[2] << 16 | rx_buffer[3] << 8 | rx_buffer[4] + FLASH_START_ADDR;
+    size_t addr = rx_buffer[1] << 24 | rx_buffer[2] << 16 | rx_buffer[3] << 8 | rx_buffer[4];
+    size_t start_addr = addr + FLASH_START_ADDR;
     size_t size = rx_buffer[5] << 24 | rx_buffer[6] << 16 | rx_buffer[7] << 8 | rx_buffer[8];
     mem_pointer = tx_buffer;
     if(start_addr + size < FLASH_SIZE)
     {
-        uint16_t crc = crc16_ccitt((uint8_t*)start_addr, size);
-        tx_buffer[0] = (uint8_t) (crc >> 8);
-        tx_buffer[1] = (uint8_t) (crc & 0x00ff);
-        mem_end = tx_buffer+2;
+        uint32_t crc = crc32((uint8_t*)start_addr, size);
+        tx_buffer[0] = (uint8_t) ((crc >> 24) & 0x000000ff);
+        tx_buffer[1] = (uint8_t) ((crc >> 16) & 0x000000ff);
+        tx_buffer[2] = (uint8_t) ((crc >> 8) & 0x000000ff);
+        tx_buffer[3] = (uint8_t) (crc & 0x000000ff);
+        mem_end = tx_buffer+sizeof(crc);
     }
     else
     {
