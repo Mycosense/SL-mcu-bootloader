@@ -8,7 +8,7 @@
 
 #define ERASE_COMMAND 0xc7
 #define CRC_COMMAND 0xca
-
+#define JUMP_TO_APPL_COMMAND 0xce
 
 I2CFlash::I2CFlash(SERCOM *s, uint8_t pinSDA, uint8_t pinSCL) : sercom(s), _uc_pinSDA(pinSDA), _uc_pinSCL(pinSCL) {}
 
@@ -33,13 +33,17 @@ void I2CFlash::write_stop(void)
     {
         return;
     }
-    else if(rx_buffer[0] == ERASE_COMMAND) // erase command
+    else if(rx_buffer[0] == ERASE_COMMAND)
     {
         require_erase = true;
     }
-    else if(rx_buffer[0] == CRC_COMMAND) // erase command
+    else if(rx_buffer[0] == CRC_COMMAND)
     {
         require_crc = true;
+    }
+    else if(rx_buffer[0] == JUMP_TO_APPL_COMMAND)
+    {
+        require_reboot_to_application = true;
     }
     else if(is_flash_mem())
     {

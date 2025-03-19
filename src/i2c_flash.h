@@ -11,7 +11,7 @@
 #define ADDR_LEN 4
 #define RX_BUFFER_PADDING_LEN 4
 #define RX_BUFFER_LEN (ADDR_LEN + FLASH_ROW_SIZE + RX_BUFFER_PADDING_LEN)
-#define TX_BUFFER_LEN 2
+#define TX_BUFFER_LEN 4
 #define FLASH_START_ADDR 0x2000U
 
 class I2CFlash
@@ -26,6 +26,7 @@ class I2CFlash
     volatile uint16_t flash_write_len;
     volatile bool require_erase;
     volatile bool require_crc;
+    volatile bool require_reboot_to_application;
     volatile uint8_t* mem_pointer = (uint8_t*)FLASH_START_ADDR;
     volatile uint8_t* mem_end = (uint8_t*)FLASH_SIZE;
 
