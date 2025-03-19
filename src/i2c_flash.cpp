@@ -9,6 +9,7 @@
 #define ERASE_COMMAND 0xc7
 #define CRC_COMMAND 0xca
 #define JUMP_TO_APPL_COMMAND 0xce
+#define GET_BLD_VERSION_COMMAND 0xcf
 
 I2CFlash::I2CFlash(SERCOM *s, uint8_t pinSDA, uint8_t pinSCL) : sercom(s), _uc_pinSDA(pinSDA), _uc_pinSCL(pinSCL) {}
 
@@ -23,8 +24,7 @@ void I2CFlash::begin(uint8_t address, bool enableGeneralCall) {
 
 bool I2CFlash::is_ready(void)
 {
-    bool is_ready =  !require_erase && flash_write_len == 0;
-    return is_ready;
+    return status == FLASH_READY;
 }
 
 void I2CFlash::write_stop(void)
@@ -35,15 +35,19 @@ void I2CFlash::write_stop(void)
     }
     else if(rx_buffer[0] == ERASE_COMMAND)
     {
-        require_erase = true;
+        status = FLASH_ERASE;
     }
     else if(rx_buffer[0] == CRC_COMMAND)
     {
-        require_crc = true;
+        status = FLASH_CRC_CALC;
     }
     else if(rx_buffer[0] == JUMP_TO_APPL_COMMAND)
     {
-        require_reboot_to_application = true;
+        status = FLASH_JUMP_TO_APPL;
+    }
+    else if(rx_buffer[0] == GET_BLD_VERSION_COMMAND)
+    {
+        status = FLASH_GET_VERSION;
     }
     else if(is_flash_mem())
     {
@@ -53,6 +57,7 @@ void I2CFlash::write_stop(void)
             mem_pointer = (uint8_t*)(FLASH_START_ADDR + addr);
             mem_end = (uint8_t*)FLASH_SIZE;
             flash_write_len = rx_buffer_index - ADDR_LEN;
+            status = FLASH_WRITE;
         }
     }
 }
@@ -159,6 +164,7 @@ void I2CFlash::write_flash(void)
     flash_write_words(dst, src, n_words);
     mem_pointer += flash_write_len;
     flash_write_len = 0;
+    status = FLASH_READY;
 }
 
 void I2CFlash::prepare_crc(void)
@@ -180,6 +186,14 @@ void I2CFlash::prepare_crc(void)
     {
         mem_end = 0;
     }
-    require_crc = false;
+    status = FLASH_READY;
+}
+
+void I2CFlash::write_version(const char* version)
+{
+    strncpy((char*)tx_buffer, version, TX_BUFFER_LEN);
+    mem_pointer = tx_buffer;
+    mem_end = tx_buffer + TX_BUFFER_LEN;
+    status = FLASH_READY;
 }
 

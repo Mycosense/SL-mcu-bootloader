@@ -26,7 +26,7 @@
 MEMORY
 {
   FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x00002000
-  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00008000
+  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00007ff0
 }
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -175,7 +175,7 @@ SECTIONS
 
 	} > RAM
 
-	.bss :
+	.bss (NOLOAD):
 	{
 		. = ALIGN(4);
 		__bss_start__ = .;

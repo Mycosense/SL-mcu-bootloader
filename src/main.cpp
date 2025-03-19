@@ -5,6 +5,7 @@
 
 #define I2C_SLAVE_ADDRESS 0x30
 #define BLINK_HALF_PERIOD_MS 500
+static char BLD_VERSION[] = "BLD_V0.1";
 
 #define START_APPLICATION_BYTE_PTR ((volatile uint32_t *)(HMCRAMC0_ADDR + HMCRAMC0_SIZE - 4))
 #define START_APPLICATION_MAGIC 0xf02669ef
@@ -71,28 +72,31 @@ static void jump_to_application(void)
 static void reboot_to_application(void)
 {
   *START_APPLICATION_BYTE_PTR = START_APPLICATION_MAGIC;
-  delay(1);
   NVIC_SystemReset();
 }
 
 void loop() {
-  if(g_i2c_flash.require_erase)
+  switch(g_i2c_flash.status)
   {
-    flash_erase_to_end((uint32_t*)FLASH_START_ADDR);
-    g_i2c_flash.require_erase = false;
-  }
-  if(g_i2c_flash.flash_write_len)
-  {
-    g_i2c_flash.write_flash();
-    led_toggle(); // blink during flash
-  }
-  if(g_i2c_flash.require_crc)
-  {
-    g_i2c_flash.prepare_crc();
-  }
-  if(g_i2c_flash.require_reboot_to_application)
-  {
-    reboot_to_application();
+    case FLASH_ERASE:
+      flash_erase_to_end((uint32_t*)FLASH_START_ADDR);
+      g_i2c_flash.status = FLASH_READY;
+      break;
+    case FLASH_WRITE:
+      g_i2c_flash.write_flash();
+      led_toggle(); // blink during flash
+      break;
+    case FLASH_CRC_CALC:
+      g_i2c_flash.prepare_crc();
+      break;
+    case FLASH_JUMP_TO_APPL:
+      reboot_to_application();
+      break;
+    case FLASH_GET_VERSION:
+      g_i2c_flash.write_version(BLD_VERSION);
+      break;
+    case FLASH_READY:
+      break;
   }
   blink_loop();
 }
