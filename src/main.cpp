@@ -5,16 +5,19 @@
 
 #define I2C_SLAVE_ADDRESS 0x30
 #define BLINK_HALF_PERIOD_MS 500
-static char BLD_VERSION[] = "BLD_V0.1";
+static char BLD_VERSION[] = "BLD_V0.2";
 
 #define START_APPLICATION_BYTE_PTR ((volatile uint32_t *)(HMCRAMC0_ADDR + HMCRAMC0_SIZE - 4))
 #define START_APPLICATION_MAGIC 0xf02669ef
+#define BOOT_PROT 0x2
 
 
 static I2CFlash g_i2c_flash(&PERIPH_WIRE, PIN_WIRE_SDA, PIN_WIRE_SCL);
 static bool is_jump_application_set(void);
 static void jump_to_application(void);
 static void reboot_to_application(void);
+static void lock_bootloader_section(void);
+
 
 void SERCOM0_Handler()
 {
@@ -28,6 +31,7 @@ void setup() {
     jump_to_application();
   }
   pinMode(PIN_LED, OUTPUT);
+  lock_bootloader_section();
   g_i2c_flash.begin(I2C_SLAVE_ADDRESS);
 }
 
@@ -99,4 +103,20 @@ void loop() {
       break;
   }
   blink_loop();
+}
+
+
+#if FLASH_START_ADDR != 0x2000
+#warning "BOOTPROT is not adapted for current bootloader size"
+#endif
+static void lock_bootloader_section(void)
+{
+  // persistently set bootloader section to 0x2000 to write protect
+  uint32_t user_row = *(uint32_t*)NVMCTRL_USER;
+  if((user_row & 0x00000007) != BOOT_PROT)
+  {
+    user_row = (user_row & 0xfffffff8) | BOOT_PROT;
+    flash_erase_nvm_user_config();
+    flash_write_nvm_user_config(user_row);
+  }
 }

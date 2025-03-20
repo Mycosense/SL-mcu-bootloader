@@ -16,6 +16,16 @@ void flash_erase_row(uint32_t *dst) {
     wait_ready();
 }
 
+void flash_erase_nvm_user_config() {
+    wait_ready();
+    NVMCTRL->STATUS.reg = NVMCTRL_STATUS_MASK;
+
+    // Execute "EAR" Erase Row
+    NVMCTRL->ADDR.reg = (uint32_t)NVMCTRL_USER / 2;
+    NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_EAR;
+    wait_ready();
+}
+
 void flash_erase_to_end(uint32_t *start_address) {
     // Note: the flash memory is erased in ROWS, that is in
     // block of 4 pages.
@@ -58,4 +68,22 @@ void flash_write_words(uint32_t *dst, uint32_t *src, uint32_t n_words) {
         NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_WP;
         wait_ready();
     }
+}
+
+void flash_write_nvm_user_config(uint32_t value) {
+    // Set automatic page write
+    NVMCTRL->CTRLB.bit.MANW = 0;
+
+
+    // Execute "PBC" Page Buffer Clear
+    NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_PBC;
+    wait_ready();
+
+    // make sure there are no other memory writes here
+    // otherwise we get lock-ups
+    *(uint32_t*)NVMCTRL_USER = value;
+
+    // Execute "WAP" Write Page
+    NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_WAP;
+    wait_ready();
 }
