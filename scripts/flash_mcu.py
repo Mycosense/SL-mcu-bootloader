@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-
+import argparse
+import logging
 import os
 import struct
 import sys
@@ -74,14 +75,14 @@ class I2CFlasher:
     def flash_and_start(self, filename: str) -> None:
         crc_calc = self.crc32_file(filename)
         file_size = os.path.getsize(filename)
-        print(self.read_bld_version())
+        logging.info(self.read_bld_version())
         for i in range(0, self.RETRY_MAX):
             crc_read = self.read_crc(file_size)
             if  crc_calc == crc_read:
                 self.start_application()
-                print('starting application')
+                logging.info('starting application')
                 break
-            print(f'flashing file {filename}')
+            logging.info(f'flashing file {filename}')
             time.sleep(1)
             self.flash(filename)
             time.sleep(1)
@@ -89,6 +90,21 @@ class I2CFlasher:
             raise ValueError(f'Could not flash file {filename}')
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog=__name__, description='Tool to upgrade I2C micro controllers')
+    parser.add_argument('firmware_path', help='Path to firmware file or directory')
+    parser.add_argument('--verbose', '-v', action='count', default=0)
+    parser.add_argument('-d', '--device', type=str, default='/dev/i2c-' + os.environ.get('I2C_BUS_BATTERY', '1'),
+                        help='I2C device to use (default: %(default)s)')
+    args = parser.parse_args()
+
+    if args.verbose == 1:
+        log_level = logging.INFO
+    elif args.verbose == 2:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.WARNING
+    logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
+
     flasher = I2CFlasher('/dev/i2c-7')
-    filename = sys.argv[1]
-    flasher.flash_and_start(filename)
+    file_name = sys.argv[1]
+    flasher.flash_and_start(file_name)
