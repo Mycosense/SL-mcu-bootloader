@@ -1,4 +1,7 @@
-#include "uf2.h"
+#include "flash.h"
+
+#define BLD_LOCKED 0x2
+#define BLD_UNLOCKED 0x7
 
 // this actually generates less code than a function
 #define wait_ready()                                                                               \
@@ -112,4 +115,62 @@ void flash_write_row(uint32_t *dst, uint32_t *src) {
 
     flash_erase_row(dst);
     flash_write_words(dst, src, FLASH_ROW_SIZE / 4);
+}
+
+void flash_write_nvm_user_config(uint32_t value) {
+    // Set automatic page write
+    NVMCTRL->CTRLB.bit.MANW = 0;
+
+
+    // Execute "PBC" Page Buffer Clear
+    NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_PBC;
+    wait_ready();
+
+    // make sure there are no other memory writes here
+    // otherwise we get lock-ups
+    *(uint32_t*)NVMCTRL_USER = value;
+
+    // Execute "WAP" Write Page
+    NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_WAP;
+    wait_ready();
+}
+
+void flash_erase_nvm_user_config(void) {
+    wait_ready();
+    NVMCTRL->STATUS.reg = NVMCTRL_STATUS_MASK;
+
+    // Execute "EAR" Erase Row
+    NVMCTRL->ADDR.reg = (uint32_t)NVMCTRL_USER / 2;
+    NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_EAR;
+    wait_ready();
+}
+
+#if APP_START_ADDRESS != 0x2000
+#warning "BOOTPROT is not adapted for current bootloader size"
+#endif
+void flash_bootloader_section_lock(void)
+{
+  // persistently set bootloader section to 0x2000 to write protect
+  uint32_t user_row = *(uint32_t*)NVMCTRL_USER;
+  if((user_row & 0x00000007) != BLD_LOCKED)
+  {
+    user_row = (user_row & 0xfffffff8) | BLD_LOCKED;
+    flash_erase_nvm_user_config();
+    flash_write_nvm_user_config(user_row);
+  }
+}
+
+bool flash_bootloader_section_unlock(void)
+{
+  // unlock bootloader section
+  // returns true if bld section was locked before
+  uint32_t user_row = *(uint32_t*)NVMCTRL_USER;
+  if((user_row & 0x00000007) != BLD_UNLOCKED)
+  {
+    user_row = user_row | BLD_UNLOCKED;
+    flash_erase_nvm_user_config();
+    flash_write_nvm_user_config(user_row);
+    return true;
+  }
+  return false;
 }

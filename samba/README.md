@@ -29,6 +29,23 @@ The magic bytes allow us to be retrocompatible with standard arduino firmware bi
 In this case, we boot if we have a valid address for the reset handler.
 
 
+### Bootoader protection
+
+We use the SAMD21's bootloader protection with the same mechanism as for the `i2c_bootloader`. Please refer to [i2c_bootloader README](../i2c_bootloader/README.md#write-protection)
+
+### Entering the bootloader
+
+To avoid accidentally entering the bootloader, we removed entering the bootloader with the reset double tap.
+Instead, the bootloader can me triggered from application with:
+```
+#define DOUBLE_TAP_MAGIC 0xf01669efUL
+#define BOOT_DOUBLE_TAP_ADDRESS 0x20007FFC //(HSRAM_ADDR + HSRAM_SIZE - 4)
+#define BOOT_DOUBLE_TAP_DATA (*((volatile uint32_t *)BOOT_DOUBLE_TAP_ADDRESS))
+BOOT_DOUBLE_TAP_DATA = DOUBLE_TAP_MAGIC;
+```
+
+For the Spotlight Motherboard, the bootloader can also be triggered by pressing button1 and button4 for 10s (pins PA21 -> Ground and PB02 -> Ground).
+
 ## UF2
 
 **UF2 (USB Flashing Format)** is a name of a file format, developed by Microsoft, that is particularly

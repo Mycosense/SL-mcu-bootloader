@@ -267,6 +267,8 @@ void system_init(void);
 #define LED_TICK led_tick
 
 #define PINOP(pin, OP) (PORT->Group[(pin) / 32].OP.reg = (1 << ((pin) % 32)))
+#define PINREAD(pin) (((PORT->Group[(pin) / 32].IN.reg) >> ((pin) % 32)) & 0x01)
+#define PIN_SETCFG(pin, cfg) PORT->Group[(pin) / 32].PINCFG[(pin) % 32 ].reg = (uint8_t)(cfg);
 
 void led_tick(void);
 void led_signal(void);

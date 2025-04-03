@@ -73,8 +73,10 @@
 /*
  * LEDs definitions
  */
-#define LED_PIN  PIN_PA17
+#define LED_PIN           PIN_PA17
 #define JETSON_ENABLE_PIN PIN_PA07
+#define BLD_PIN0          PIN_PA21 // SL Button 1
+#define BLD_PIN1          PIN_PB02 // SL Button 4
 // No RX/TX led
 //#define BOARD_LEDRX_PORT
 //#define BOARD_LEDRX_PIN

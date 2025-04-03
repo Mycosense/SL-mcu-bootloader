@@ -73,10 +73,10 @@
  *
  */
 
-#include "uf2.h"
+#include "flash.h"
 #include "crc16_ccitt.h"
 
-#define BOOTLOADER_TIMEOUT 100000 // approx 5s
+#define BUTTON_PRESS_MS 5000
 #define BLD_METABLOCK_SIZE 0x100
 static const uint8_t BLD_METABLOCK_MAGIC[] = {0x01, 0x05};
 
@@ -92,41 +92,49 @@ extern int8_t led_tick_step;
     #define RESET_CONTROLLER RSTC
 #endif
 
+static bool check_bootloader_buttons(void)
+{
+#if defined(BLD_PIN0) && defined(BLD_PIN1)
+    // set pins to input with pull-up
+    PIN_SETCFG(BLD_PIN0, PORT_PINCFG_INEN|PORT_PINCFG_PULLEN)
+    PINOP(BLD_PIN0, DIRCLR);
+    PINOP(BLD_PIN0, OUTSET);
+    PIN_SETCFG(BLD_PIN1, PORT_PINCFG_INEN|PORT_PINCFG_PULLEN)
+    PINOP(BLD_PIN1, DIRCLR);
+    PINOP(BLD_PIN1, OUTSET);
+
+    for(uint32_t i = 0; i < ((BUTTON_PRESS_MS)*50); i++)
+    {
+        if(PINREAD(BLD_PIN0) == 1 || PINREAD(BLD_PIN1) == 1)
+        {
+            return false; // buttons not pushed
+        }
+    }
+    return true; // buttons remained pushed
+#else
+    return false; // no buttons
+#endif
+}
+
+static bool check_bootloader_from_app(void)
+{
+    bool power_on_reset = RESET_CONTROLLER->RCAUSE.bit.POR;
+    bool bld_signal_from_application = *DBL_TAP_PTR == DBL_TAP_MAGIC;
+    *DBL_TAP_PTR = 0;
+    bool enter_bld = bld_signal_from_application && !power_on_reset;
+    return enter_bld;
+}
+
+
 /**
  * \brief Check the application startup condition
  *
  */
 static void check_start_application(void) {
 
-#if USE_SINGLE_RESET
-    if (SINGLE_RESET()) {
-        if (RESET_CONTROLLER->RCAUSE.bit.POR || *DBL_TAP_PTR != DBL_TAP_MAGIC_QUICK_BOOT) {
-            // the second tap on reset will go into app
-            *DBL_TAP_PTR = DBL_TAP_MAGIC_QUICK_BOOT;
-            // this will be cleared after succesful USB enumeration
-            // this is around 1.5s
-            resetHorizon = timerHigh + 50;
-            return;
-        }
-    }
-#endif
-
-    if (RESET_CONTROLLER->RCAUSE.bit.POR) {
-        *DBL_TAP_PTR = 0;
-    }
-    else if (*DBL_TAP_PTR == DBL_TAP_MAGIC) {
-        *DBL_TAP_PTR = 0;
+    if (check_bootloader_from_app() || check_bootloader_buttons()) {
         return; // stay in bootloader
     }
-    else {
-        if (*DBL_TAP_PTR != DBL_TAP_MAGIC_QUICK_BOOT) {
-            *DBL_TAP_PTR = DBL_TAP_MAGIC;
-            delay(500);
-        }
-        *DBL_TAP_PTR = 0;
-    }
-
-
 
     LED_MSC_OFF();
     RGBLED_set_color(COLOR_LEAVE);
@@ -205,6 +213,8 @@ int main(void) {
     /* Jump in application if condition is satisfied */
     check_start_application();
 
+    flash_bootloader_section_lock();
+
     /* We have determined we should stay in the monitor. */
     /* System initialization */
     system_init();
@@ -231,8 +241,8 @@ int main(void) {
     PINOP(JETSON_ENABLE_PIN, OUTSET);
 #endif
 
-    /* Wait for a complete enum on usb or a '#' char on serial line until timeout */
-    for(uint32_t i = 0; i < BOOTLOADER_TIMEOUT; i++) {
+    /* Wait for a complete enum on usb or a '#' char on serial line */
+    while(1) {
         if (USB_Ok()) {
             if (!main_b_cdc_enable) {
 #if USE_SINGLE_RESET
@@ -285,7 +295,7 @@ int main(void) {
             }
         }
     }
-    // after timeout, we restart
+    // should not arrive here
     NVIC_SystemReset();
 }
 
