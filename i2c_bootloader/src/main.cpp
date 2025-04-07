@@ -37,6 +37,8 @@ void setup() {
     jump_to_application();
   }
   pinMode(PIN_LED, OUTPUT);
+  pinMode(PIN_MODBUS_DE, OUTPUT);
+  digitalWrite(PIN_MODBUS_DE, LOW); // ensure not to block RS485 bus
   lock_bootloader_section();
   g_i2c_flash.begin(I2C_SLAVE_ADDRESS);
 }
