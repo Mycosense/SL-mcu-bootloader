@@ -3,11 +3,12 @@ import argparse
 import logging
 import os
 import struct
-import sys
 
 import time
 import zlib
 from periphery import I2C
+from periphery.i2c import I2CError
+
 
 class I2CFlasher:
     STRUCT_ADDR = struct.Struct(">I")
@@ -75,9 +76,15 @@ class I2CFlasher:
         return resp.data.split(b'\x00', 1)[0].decode('utf-8')
 
     def flash_and_start(self, filename: str) -> None:
+        try:
+            bld_version = self.read_bld_version()
+            logging.info(bld_version)
+        except I2CError:
+            logging.warning('Bootloader not responding')
+            return
+
         crc_calc = self.crc32_file(filename)
         file_size = os.path.getsize(filename)
-        logging.info(self.read_bld_version())
         for i in range(0, self.RETRY_MAX):
             crc_read = self.read_crc(file_size)
             if  crc_calc == crc_read:
@@ -90,6 +97,7 @@ class I2CFlasher:
             time.sleep(1)
         else:
             raise ValueError(f'Could not flash file {filename}')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog=__name__, description='Tool to upgrade I2C micro controllers')
