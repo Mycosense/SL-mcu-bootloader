@@ -11,12 +11,17 @@ on:
 
 jobs:
   crossbuild-dlp2-bootloader:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Git describe
         id: ghd
         uses: proudust/gh-describe@v2
+      - uses: ConorMacBride/install-package@v1
+        with:
+          apt: python2.7
+      - name: link python2
+        run: sudo ln -s /usr/bin/python2.7 /usr/bin/python2
       - name: Install toolchain
         run: |
           cd samba
@@ -36,12 +41,17 @@ jobs:
           name: update-bootloader-dlp2
 
   crossbuild-dlp3-bootloader:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Git describe
         id: ghd
         uses: proudust/gh-describe@v2
+      - uses: ConorMacBride/install-package@v1
+        with:
+          apt: python2.7
+      - name: link python2
+        run: sudo ln -s /usr/bin/python2.7 /usr/bin/python2
       - name: Install toolchain
         run: |
           cd samba
@@ -61,12 +71,17 @@ jobs:
 
 
   crossbuild-spotlight_motherboard-bootloader:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Git describe
         id: ghd
         uses: proudust/gh-describe@v2
+      - uses: ConorMacBride/install-package@v1
+        with:
+          apt: python2.7
+      - name: link python2
+        run: sudo ln -s /usr/bin/python2.7 /usr/bin/python2
       - name: Install toolchain
         run: |
           cd samba
@@ -110,7 +125,7 @@ jobs:
            path: bootloader-fake-battery*.bin
 
   upload-to-gcloud:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: [crossbuild-spotlight_motherboard-bootloader, crossbuild-dlp2-bootloader, crossbuild-dlp3-bootloader, crossbuild-i2c-bootloader]
     steps:
