@@ -173,6 +173,14 @@ $(SELF_EXECUTABLE): $(SELF_OBJECTS)
 	arm-none-eabi-objcopy -O binary $(BUILD_PATH)/update-$(NAME).elf $(BUILD_PATH)/update-$(NAME).bin
 	python2 lib/uf2/utils/uf2conv.py -b $(BOOTLOADER_SIZE) -c -o $@ $(BUILD_PATH)/update-$(NAME).bin
 
+
+$(SELF_EXECUTABLE): $(SELF_OBJECTS)
+	$(CC) -L$(BUILD_PATH) $(LDFLAGS) \
+		 -T$(SELF_LINKER_SCRIPT_METABLOCK) \
+		 -Wl,-Map,$(BUILD_PATH)/update-$(NAME)_meta.map -o $(BUILD_PATH)/update-$(NAME)_meta.elf $(SELF_OBJECTS)
+	arm-none-eabi-objcopy -O binary $(BUILD_PATH)/update-$(NAME)_meta.elf $(BUILD_PATH)/update-$(NAME)_meta.bin
+	python2 lib/uf2/utils/uf2conv.py -b $(BOOTLOADER_SIZE) -c -o $@ $(BUILD_PATH)/update-$(NAME)_meta.bin
+
 $(BUILD_PATH)/%.o: src/%.c $(wildcard inc/*.h boards/*/*.h) $(BUILD_PATH)/uf2_version.h
 	echo "$<"
 	$(CC) $(CFLAGS) $(BLD_EXTA_FLAGS) $(INCLUDES) $< -o $@
