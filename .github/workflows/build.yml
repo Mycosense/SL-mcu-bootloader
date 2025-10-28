@@ -69,6 +69,34 @@ jobs:
             samba/build/dlp3/bootloader-dlp3*.bin
           name: update-bootloader-dlp3
 
+  crossbuild-dlp4-bootloader:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git describe
+        id: ghd
+        uses: proudust/gh-describe@v2
+      - uses: ConorMacBride/install-package@v1
+        with:
+          apt: python2.7
+      - name: link python2
+        run: sudo ln -s /usr/bin/python2.7 /usr/bin/python2
+      - name: Install toolchain
+        run: |
+          cd samba
+          wget -qO- https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v8.3.1-1.4/xpack-arm-none-eabi-gcc-8.3.1-1.4-linux-x64.tar.gz | tar -zxv
+          echo "xpack-arm-none-eabi-gcc-8.3.1-1.4/bin" >> $GITHUB_PATH
+      - name: Compile
+        run: |
+          cd samba
+          make BOARD=dlp4 UF2_VERSION_BASE=${{ steps.ghd.outputs.describe }}
+      - name: upload github
+        uses: actions/upload-artifact@v4
+        with:
+          path: |
+            samba/build/dlp4/update-bootloader-dlp4*.bin
+            samba/build/dlp4/bootloader-dlp4*.bin
+          name: update-bootloader-dlp4
 
   crossbuild-spotlight_motherboard-bootloader:
     runs-on: ubuntu-22.04
@@ -127,7 +155,7 @@ jobs:
   upload-to-gcloud:
     runs-on: ubuntu-24.04
     if: github.event_name == 'push' && github.ref_type == 'tag'
-    needs: [crossbuild-spotlight_motherboard-bootloader, crossbuild-dlp2-bootloader, crossbuild-dlp3-bootloader, crossbuild-i2c-bootloader]
+    needs: [crossbuild-spotlight_motherboard-bootloader, crossbuild-dlp2-bootloader, crossbuild-dlp3-bootloader, crossbuild-dlp4-bootloader, crossbuild-i2c-bootloader]
     steps:
       - uses: actions/download-artifact@v4
         with:
