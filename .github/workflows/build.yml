@@ -38,6 +38,7 @@ jobs:
             samba/build/dlp2/update-bootloader-dlp2*.uf2
             samba/build/dlp2/update-bootloader-dlp2*.bin
             samba/build/dlp2/bootloader-dlp2*.bin
+            samba/build/dlp2/bootloader-dlp2*.elf
           name: update-bootloader-dlp2
 
   crossbuild-dlp3-bootloader:
@@ -67,6 +68,7 @@ jobs:
           path: |
             samba/build/dlp3/update-bootloader-dlp3*.bin
             samba/build/dlp3/bootloader-dlp3*.bin
+            samba/build/dlp3/bootloader-dlp3*.elf
           name: update-bootloader-dlp3
 
   crossbuild-dlp4-bootloader:
@@ -96,6 +98,7 @@ jobs:
           path: |
             samba/build/dlp4/update-bootloader-dlp4*.bin
             samba/build/dlp4/bootloader-dlp4*.bin
+            samba/build/dlp4/bootloader-dlp4*.elf
           name: update-bootloader-dlp4
 
   crossbuild-spotlight_motherboard-bootloader:
@@ -126,6 +129,7 @@ jobs:
             samba/build/spotlight_motherboard/update-bootloader-spotlight_motherboard*.uf2
             samba/build/spotlight_motherboard/update-bootloader-spotlight_motherboard*.bin
             samba/build/spotlight_motherboard/bootloader-spotlight_motherboard*.bin
+            samba/build/spotlight_motherboard/bootloader-spotlight_motherboard*.elf
           name: update-bootloader-spotlight_motherboard
 
   crossbuild-i2c-bootloader:
