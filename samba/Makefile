@@ -32,6 +32,7 @@ ifeq ($(CHIP_FAMILY), samd21)
 LINKER_SCRIPT=scripts/samd21j18a.ld
 BOOTLOADER_SIZE=8192
 SELF_LINKER_SCRIPT=scripts/samd21j18a_self.ld
+SELF_LINKER_SCRIPT_METABLOCK=scripts/samd21j18a_self_metablock.ld
 endif
 
 ifeq ($(CHIP_FAMILY), samd51)
@@ -91,11 +92,12 @@ SELF_OBJECTS = $(patsubst src/%.c,$(BUILD_PATH)/%.o,$(SELF_SOURCES)) $(BUILD_PAT
 NAME=bootloader-$(BOARD)-$(UF2_VERSION_BASE)
 EXECUTABLE=$(BUILD_PATH)/$(NAME).bin
 SELF_EXECUTABLE=$(BUILD_PATH)/update-$(NAME).uf2
+SELF_EXECUTABLE_META=$(BUILD_PATH)/update-$(NAME)_meta.bin
 SELF_EXECUTABLE_INO=$(BUILD_PATH)/update-$(NAME).ino
 
 SUBMODULES = lib/uf2/README.md
 
-all: $(SUBMODULES) dirs $(EXECUTABLE) $(SELF_EXECUTABLE)
+all: $(SUBMODULES) dirs $(EXECUTABLE) $(SELF_EXECUTABLE) $(SELF_EXECUTABLE_META)
 
 r: run
 b: burn
@@ -172,6 +174,14 @@ $(SELF_EXECUTABLE): $(SELF_OBJECTS)
 		 -Wl,-Map,$(BUILD_PATH)/update-$(NAME).map -o $(BUILD_PATH)/update-$(NAME).elf $(SELF_OBJECTS)
 	arm-none-eabi-objcopy -O binary $(BUILD_PATH)/update-$(NAME).elf $(BUILD_PATH)/update-$(NAME).bin
 	python2 lib/uf2/utils/uf2conv.py -b $(BOOTLOADER_SIZE) -c -o $@ $(BUILD_PATH)/update-$(NAME).bin
+
+
+$(SELF_EXECUTABLE_META): $(SELF_OBJECTS)
+	$(CC) -L$(BUILD_PATH) $(LDFLAGS) \
+		 -T$(SELF_LINKER_SCRIPT_METABLOCK) \
+		 -Wl,-Map,$(BUILD_PATH)/update-$(NAME)_meta.map -o $(BUILD_PATH)/update-$(NAME)_meta.elf $(SELF_OBJECTS)
+	arm-none-eabi-objcopy -O binary $(BUILD_PATH)/update-$(NAME)_meta.elf $(BUILD_PATH)/update-$(NAME)_meta.bin
+	python2 lib/uf2/utils/uf2conv.py -b $(BOOTLOADER_SIZE) -c -o $@ $(BUILD_PATH)/update-$(NAME)_meta.bin
 
 $(BUILD_PATH)/%.o: src/%.c $(wildcard inc/*.h boards/*/*.h) $(BUILD_PATH)/uf2_version.h
 	echo "$<"

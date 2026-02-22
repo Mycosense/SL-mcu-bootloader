@@ -1,4 +1,4 @@
-#include "uf2.h"
+#include "flash.h"
 
 #include "sam.h"
 
@@ -150,7 +150,10 @@ int main(void) {
 
 #ifdef SAMD21
     // Disable BOOTPROT while updating bootloader.
-    setBootProt(7); // 0k - See "Table 22-2 Boot Loader Size" in datasheet.
+    if(flash_bootloader_section_unlock())
+    {
+        NVIC_SystemReset(); // reset for bootprot disabling to take effect
+    }
 #endif
 #ifdef SAMD51
     // We only need to set the BOOTPROT once on the SAMD51. For updates, we can
@@ -205,8 +208,7 @@ int main(void) {
     LED_MSC_OFF();
 
 #ifdef SAMD21
-    // Re-enable BOOTPROT
-    //setBootProt(2); // 8k  this crashes Seeeduino Xiao
+    flash_bootloader_section_lock();
 #endif
     // For the SAMD51, the boot protection will automatically be re-enabled on
     // reset.

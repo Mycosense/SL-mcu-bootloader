@@ -31,12 +31,16 @@ jobs:
         run: |
           cd samba
           make BOARD=dlp2 UF2_VERSION_BASE=${{ steps.ghd.outputs.describe }}
+      - name: add metablock
+        run: |
+          python3 samba/scripts/fw_create_bld_meta_block.py samba/build/dlp2/update-bootloader-dlp2-${{ steps.ghd.outputs.describe }}.bin samba/build/dlp2/update-bootloader-dlp2-${{ steps.ghd.outputs.describe }}_meta.bin
       - name: upload github
         uses: actions/upload-artifact@v4
         with:
           path: |
             samba/build/dlp2/update-bootloader-dlp2*.uf2
             samba/build/dlp2/update-bootloader-dlp2*.bin
+            samba/build/dlp2/update-bootloader-dlp2*_meta.bin
             samba/build/dlp2/bootloader-dlp2*.bin
           name: update-bootloader-dlp2
 
@@ -61,11 +65,15 @@ jobs:
         run: |
           cd samba
           make BOARD=dlp3 UF2_VERSION_BASE=${{ steps.ghd.outputs.describe }}
+      - name: add metablock
+        run: |
+          python3 samba/scripts/fw_create_bld_meta_block.py samba/build/dlp3/update-bootloader-dlp3-${{ steps.ghd.outputs.describe }}.bin samba/build/dlp3/update-bootloader-dlp3-${{ steps.ghd.outputs.describe }}_meta.bin
       - name: upload github
         uses: actions/upload-artifact@v4
         with:
           path: |
             samba/build/dlp3/update-bootloader-dlp3*.bin
+            samba/build/dlp3/update-bootloader-dlp3*_meta.bin
             samba/build/dlp3/bootloader-dlp3*.bin
           name: update-bootloader-dlp3
 
@@ -119,12 +127,16 @@ jobs:
         run: |
           cd samba
           make BOARD=spotlight_motherboard UF2_VERSION_BASE=${{ steps.ghd.outputs.describe }}
+      - name: add metablock
+        run: |
+          python3 samba/scripts/fw_create_bld_meta_block.py samba/build/spotlight_motherboard/update-bootloader-spotlight_motherboard-${{ steps.ghd.outputs.describe }}.bin samba/build/spotlight_motherboard/update-bootloader-spotlight_motherboard-${{ steps.ghd.outputs.describe }}_meta.bin
       - name: upload github
         uses: actions/upload-artifact@v4
         with:
           path: |
             samba/build/spotlight_motherboard/update-bootloader-spotlight_motherboard*.uf2
             samba/build/spotlight_motherboard/update-bootloader-spotlight_motherboard*.bin
+            samba/build/spotlight_motherboard/update-bootloader-spotlight_motherboard*_meta.bin
             samba/build/spotlight_motherboard/bootloader-spotlight_motherboard*.bin
           name: update-bootloader-spotlight_motherboard
 
