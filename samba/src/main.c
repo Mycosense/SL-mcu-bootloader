@@ -68,7 +68,7 @@
  *
  * Applications compiled to be executed along with the bootloader will start at
  * 0x2000 (samd21) or 0x4000 (samd51)
- * The bootloader doesn't changes the VTOR register, application code is 
+ * The bootloader doesn't changes the VTOR register, application code is
  * taking care of this.
  *
  */
@@ -76,7 +76,6 @@
 #include "uf2.h"
 #include "crc16_ccitt.h"
 
-#define BOOTLOADER_TIMEOUT 100000 // approx 5s
 #define BLD_METABLOCK_SIZE 0x100
 static const uint8_t BLD_METABLOCK_MAGIC[] = {0x01, 0x05};
 
@@ -232,7 +231,7 @@ int main(void) {
 #endif
 
     /* Wait for a complete enum on usb or a '#' char on serial line until timeout */
-    for(uint32_t i = 0; i < BOOTLOADER_TIMEOUT; i++) {
+    while(1) {
         if (USB_Ok()) {
             if (!main_b_cdc_enable) {
 #if USE_SINGLE_RESET
