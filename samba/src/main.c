@@ -117,13 +117,6 @@ static void check_start_application(void) {
         *DBL_TAP_PTR = 0;
         return; // stay in bootloader
     }
-    else {
-        if (*DBL_TAP_PTR != DBL_TAP_MAGIC_QUICK_BOOT) {
-            *DBL_TAP_PTR = DBL_TAP_MAGIC;
-            delay(500);
-        }
-        *DBL_TAP_PTR = 0;
-    }
 
 
 
