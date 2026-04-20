@@ -124,19 +124,11 @@ static void check_start_application(void) {
     RGBLED_set_color(COLOR_LEAVE);
 
     uint32_t app_start_address;
-    if(is_metablock())
+    if(!verify_application_code())
     {
-        if(!verify_application_code())
-        {
-            return;  // invalid meta data, stay in bootloader
-        }
-        app_start_address = APP_START_ADDRESS + BLD_METABLOCK_SIZE;
+        return;  // invalid meta data, stay in bootloader
     }
-    else
-    {
-        // Legacy firmware w/o metablock
-        app_start_address = APP_START_ADDRESS;
-    }
+    app_start_address = APP_START_ADDRESS + BLD_METABLOCK_SIZE;
 
     uint32_t app_reset_handler_address = *(uint32_t *)(app_start_address + 4);
     uint32_t main_stack_pointer_address = *(uint32_t *)app_start_address;
@@ -284,6 +276,10 @@ int main(void) {
 // True: success (application code valid)
 static bool verify_application_code(void)
 {
+    if (!is_metablock()) {
+        return false;
+    }
+
     uint16_t crc = *(uint16_t*)(APP_START_ADDRESS + 2);
     uint32_t firmware_size = *(uint32_t*)(APP_START_ADDRESS + 4);
     uint16_t crc_calculated = crc16_calc((uint8_t*)(APP_START_ADDRESS + BLD_METABLOCK_SIZE), firmware_size, 0);
