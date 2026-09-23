@@ -21,6 +21,10 @@ class I2CFlasher:
 
     RETRY_MAX = 3
 
+    ERASE_READY_TIMEOUT_S = 10.0
+    ERASE_READY_POLL_INTERVAL_S = 0.1
+    ERASE_READY_SAFETY_MARGIN_S = 0.3
+
     def __init__(self, i2c_dev, device_addr = 0x30):
         self.i2c = I2C(i2c_dev)
         self.device_addr = device_addr
@@ -56,11 +60,29 @@ class I2CFlasher:
     def erase_chip(self):
         self.i2c.transfer(self.device_addr, [I2C.Message(self.CMD_ERASE_CHIP)])
 
+    def wait_for_bootloader_ready(self, timeout: float = ERASE_READY_TIMEOUT_S) -> None:
+        """Block until the bootloader responds again after erase_chip().
+
+        The chip is unresponsive on the bus for the duration of the physical flash erase
+        (measured ~1.0-1.1s on hardware), which is longer than earlier fixed-sleep code
+        assumed. Polling instead of sleeping a fixed duration avoids racing the erase and
+        sending the first write chunk while the device is still mid-erase.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                self.read_bld_version()
+                time.sleep(self.ERASE_READY_SAFETY_MARGIN_S)
+                return
+            except I2CError:
+                time.sleep(self.ERASE_READY_POLL_INTERVAL_S)
+        raise TimeoutError(f'Bootloader did not respond after erase_chip() within {timeout}s')
+
     def flash(self, filename: str) -> None:
         logging.debug('erasing chip')
         self.erase_chip()
+        self.wait_for_bootloader_ready()
         logging.debug('chip erased')
-        time.sleep(1)
         self.write_file(filename)
 
     def start_application(self):
