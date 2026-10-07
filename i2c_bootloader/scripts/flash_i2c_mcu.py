@@ -20,6 +20,8 @@ class I2CFlasher:
     CMD_GET_BLD_VERSION = b'\xcf'
 
     RETRY_MAX = 3
+    # 992 rows in memory x 6 ms max erase time per row (SAMD21E18 datasheet) ~= 6 s
+    ERASE_TIMEOUT_S = 10
 
     def __init__(self, i2c_dev, device_addr = 0x30):
         self.i2c = I2C(i2c_dev)
@@ -56,11 +58,23 @@ class I2CFlasher:
     def erase_chip(self):
         self.i2c.transfer(self.device_addr, [I2C.Message(self.CMD_ERASE_CHIP)])
 
+    def wait_ready(self, timeout: float) -> None:
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                self.read_bld_version()
+                return
+            except I2CError as e:
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f'Bootloader not ready after {timeout}s') from e
+                time.sleep(0.1)
+
     def flash(self, filename: str) -> None:
         logging.debug('erasing chip')
+        start = time.monotonic()
         self.erase_chip()
-        logging.debug('chip erased')
-        time.sleep(1)
+        self.wait_ready(self.ERASE_TIMEOUT_S)
+        logging.info(f'chip erased in {time.monotonic() - start:.2f}s')
         self.write_file(filename)
 
     def start_application(self):
